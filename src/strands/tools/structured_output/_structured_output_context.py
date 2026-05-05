@@ -74,6 +74,26 @@ class StructuredOutputContext:
         """
         return self.results.get(tool_use_id)
 
+    def set_tool_choice_hint(self) -> None:
+        """Set tool_choice to direct the model to call the structured output tool on the next cycle.
+
+        After non-structured-output tools have executed, this hints the model to produce structured
+        output immediately rather than falling back to forced mode (which requires an extra user
+        message and full LLM round-trip).
+        """
+        if not self.is_enabled or not self.expected_tool_name:
+            return
+        self.tool_choice = {"tool": {"name": self.expected_tool_name}}
+        logger.debug("tool_name=<%s> | set tool_choice hint for structured output", self.expected_tool_name)
+
+    def clear_tool_choice_hint(self) -> None:
+        """Clear any tool_choice hint, returning to default behavior.
+
+        No-op when in forced mode to avoid overriding the forced tool_choice.
+        """
+        if not self.forced_mode:
+            self.tool_choice = None
+
     def set_forced_mode(self, tool_choice: dict | None = None) -> None:
         """Mark this context as being in forced structured output mode.
 

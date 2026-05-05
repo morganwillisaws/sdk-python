@@ -589,6 +589,7 @@ async def _handle_tool_execution(
         if structured_output_result := structured_output_context.extract_result(tool_uses):
             yield StructuredOutputEvent(structured_output=structured_output_result)
             structured_output_context.stop_loop = True
+            structured_output_context.clear_tool_choice_hint()
 
     invocation_state["event_loop_parent_cycle_id"] = invocation_state["event_loop_cycle_id"]
 
@@ -639,6 +640,15 @@ async def _handle_tool_execution(
             structured_output=structured_output_result,
         )
         return
+
+    # Hint the model to call the structured output tool on the next cycle to avoid forced mode
+    if (
+        structured_output_context.is_enabled
+        and not structured_output_context.stop_loop
+        and not structured_output_context.forced_mode
+        and not structured_output_context.has_structured_output_tool(tool_uses)
+    ):
+        structured_output_context.set_tool_choice_hint()
 
     events = recurse_event_loop(
         agent=agent, invocation_state=invocation_state, structured_output_context=structured_output_context
